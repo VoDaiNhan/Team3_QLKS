@@ -1,0 +1,17 @@
+/* DatPhong.css */
+.datphong-container { padding: 24px; }
+@media (max-width: 600px) {
+  .datphong-container { padding: 4px; }
+}
+[data-theme="dark"] .datphong-container h2,
+[data-theme="dark"] .datphong-container h2.ant-typography,
+[data-theme="dark"] .datphong-container .ant-typography,
+[data-theme="dark"] h2,
+[data-theme="dark"] .ant-typography,
+[data-theme="dark"] .datphong-title {
+  color: #fff !important;
+}
+[data-theme="dark"] .datphong-container {
+  background: var(--bg-main, #0f172a);
+  color: var(--text-primary, #f8fafc);
+}

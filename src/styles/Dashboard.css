@@ -1,0 +1,66 @@
+.top-bar {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--background-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.user-menu-trigger:hover {
+  background-color: var(--hover-bg-color);
+}
+
+.user-menu-trigger .ant-avatar {
+  background-color: var(--primary-color);
+}
+
+.user-menu-trigger span {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.user-dropdown-menu {
+  background-color: var(--background-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.user-dropdown-item:hover {
+  background-color: var(--hover-bg-color);
+  color: var(--primary-color);
+}
+
+.user-dropdown-item svg {
+  font-size: 16px;
+} 

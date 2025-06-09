@@ -1,0 +1,5 @@
+/* HoaDon.css */
+.hoadon-container { padding: 24px; }
+@media (max-width: 600px) {
+  .hoadon-container { padding: 4px; }
+}

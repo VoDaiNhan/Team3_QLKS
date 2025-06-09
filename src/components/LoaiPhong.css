@@ -1,0 +1,216 @@
+/* LoaiPhong.css - hỗ trợ light/dark mode */
+.table-loaiphong {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--table-text, #222);
+}
+.table-loaiphong th, .table-loaiphong td {
+  border: 1px solid var(--table-border, #ddd);
+  padding: 8px;
+}
+.table-loaiphong th {
+  background-color: var(--table-th-bg, #e0f7fa);
+  text-align: left;
+}
+[data-theme="dark"] .table-loaiphong {
+  background: var(--bg-main, #0f172a);
+  color: var(--text-primary, #f8fafc);
+}
+[data-theme="dark"] .table-loaiphong th, [data-theme="dark"] .table-loaiphong td {
+  border: 1px solid var(--glass-border, #444);
+}
+[data-theme="dark"] .table-loaiphong th {
+  background-color: #1e2a32;
+}
+
+.MuiTableCell-root {
+  text-align: center !important;
+}
+
+.MuiTableCell-head {
+  font-weight: bold !important;
+  background-color: #f5f5f5 !important;
+}
+
+.MuiTableRow-root:hover {
+  background-color: #f5f5f5;
+}
+
+.MuiIconButton-root {
+  margin: 0 4px !important;
+}
+
+.MuiDialog-paper {
+  min-width: 400px !important;
+}
+
+.MuiTextField-root {
+  margin-bottom: 16px !important;
+}
+
+.MuiAlert-root {
+  margin-top: 16px !important;
+}
+
+.loai-phong-container {
+  padding: 2rem;
+}
+
+.loai-phong-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.loai-phong-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Table styles */
+.ant-table {
+  background: transparent !important;
+}
+
+[data-theme='dark'] .ant-table {
+  background: #242442 !important;
+}
+
+[data-theme='dark'] .ant-table-thead > tr > th {
+  background: #1a1a2e !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme='dark'] .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e5e7eb !important;
+}
+
+[data-theme='dark'] .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Title in dark mode */
+[data-theme='dark'] .loai-phong-title {
+  color: #ffffff;
+}
+
+/* Pagination in dark mode */
+[data-theme='dark'] .ant-pagination-item {
+  background: #242442;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .ant-pagination-item a {
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-pagination-item-active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+[data-theme='dark'] .ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+/* Buttons in dark mode */
+[data-theme='dark'] .ant-btn {
+  background: #242442;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .ant-btn-primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+[data-theme='dark'] .ant-btn-dangerous {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+/* Modal in dark mode */
+[data-theme='dark'] .ant-modal-content {
+  background: #242442;
+}
+
+[data-theme='dark'] .ant-modal-header {
+  background: #242442;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .ant-modal-title {
+  color: #ffffff;
+}
+
+[data-theme='dark'] .ant-modal-close-x {
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-form-item-label > label {
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-input {
+  background: #1a1a2e;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-input-number {
+  background: #1a1a2e;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .ant-input-number-handler-wrap {
+  background: #242442;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Table header text color in both modes */
+.ant-table-thead > tr > th {
+  font-weight: 600;
+}
+
+/* Add hover effects */
+.ant-table-tbody > tr:hover > td {
+  transition: background 0.3s ease;
+}
+
+/* Action buttons spacing */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .loai-phong-container {
+    padding: 1rem;
+  }
+  
+  .loai-phong-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+}
