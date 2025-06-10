@@ -39,6 +39,7 @@ function Phong() {
   const [checkProgress, setCheckProgress] = useState(null);
   const [filteredPhongs, setFilteredPhongs] = useState([]);
   const [allPhongs, setAllPhongs] = useState([]); // State để lưu trữ tất cả phòng
+  const [selectedLoaiPhong, setSelectedLoaiPhong] = useState(null); // Thêm state lưu loại phòng
 
   const getTrangThaiColor = (trangThai) => {
     switch (trangThai) {
@@ -404,11 +405,25 @@ function Phong() {
       const data = await response.json();
       if(response.ok) {
         setSelectedPhong(data.data);
+        // Lấy loại phòng chi tiết
+        if (data.data?.maLoaiPhong) {
+          try {
+            const resLoaiPhong = await apiFetch(`https://qlks-0dvh.onrender.com/api/LoaiPhong/${data.data.maLoaiPhong}`);
+            const dataLoaiPhong = await resLoaiPhong.json();
+            setSelectedLoaiPhong(dataLoaiPhong.data);
+          } catch (e) {
+            setSelectedLoaiPhong(null);
+          }
+        } else {
+          setSelectedLoaiPhong(null);
+        }
       } else {
         message.error(data.message || "Không thể lấy chi tiết phòng.");
+        setSelectedLoaiPhong(null);
       }
     } catch(err) {
       message.error("Lỗi khi lấy chi tiết phòng.");
+      setSelectedLoaiPhong(null);
     }
   };
 
@@ -759,15 +774,15 @@ function Phong() {
       <Modal
         title="Chi tiết phòng"
         open={!!selectedPhong}
-        onCancel={() => setSelectedPhong(null)}
+        onCancel={() => { setSelectedPhong(null); setSelectedLoaiPhong(null); }}
         destroyOnClose
         width={800}
         footer={
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Button onClick={() => setSelectedPhong(null)}>
+            <Button onClick={() => { setSelectedPhong(null); setSelectedLoaiPhong(null); }}>
               Cancel
             </Button>
-            <Button type="primary" onClick={() => setSelectedPhong(null)}>
+            <Button type="primary" onClick={() => { setSelectedPhong(null); setSelectedLoaiPhong(null); }}>
               OK
             </Button>
           </div>
@@ -807,11 +822,15 @@ function Phong() {
                   <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600 }}>Thông tin loại phòng</h3>
                   <div className="detail-item">
                     <span className="label">Số người tối đa:</span>
-                    <span className="value">{selectedPhong.soNguoiToiDa}</span>
+                    <span className="value">{selectedLoaiPhong?.soNguoiToiDa ?? '-'}</span>
                   </div>
                   <div className="detail-item">
                     <span className="label">Giá cơ bản:</span>
-                    <span className="value">{selectedPhong.giaCoBan?.toLocaleString('vi-VN')} VNĐ</span>
+                    <span className="value">{selectedLoaiPhong?.giaCoBan?.toLocaleString('vi-VN') ?? '-'} VNĐ</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="label">Giá Phòng Ngày:</span>
+                    <span className="value">{selectedLoaiPhong?.giaPhongNgay?.toLocaleString('vi-VN') ?? '-'} VNĐ</span>
                   </div>
                 </div>
               </Col>
