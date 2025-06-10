@@ -69,14 +69,21 @@ function HoaDon() {
 
   const nhanVienId = localStorage.getItem('nhanVienId');
 
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0
+  });
+
   // Fetch invoices
-  const fetchHoaDons = async () => {
+  const fetchHoaDons = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      const url = `${API_BASE_URL}/api/HoaDon?pageNumber=1&pageSize=10`;
+      // Lấy danh sách hóa đơn theo trang
+      const url = `${API_BASE_URL}/api/HoaDon?pageNumber=${page}&pageSize=${pageSize}&orderBy=ngayLap desc`;
       
       console.log('Fetching URL:', url);
-
+      
       const res = await apiFetch(url, {
         method: 'GET',
         headers: {
@@ -92,15 +99,16 @@ function HoaDon() {
       const responseData = await res.json();
       console.log('API Response:', responseData);
 
-      // Ensure we're getting an array of invoices
       let hoaDonArray = [];
       
-      if (responseData && responseData.data && responseData.data.hoaDons) {
-        hoaDonArray = responseData.data.hoaDons;
-      } else if (responseData && Array.isArray(responseData)) {
-        hoaDonArray = responseData;
-      } else if (responseData && responseData.hoaDons && Array.isArray(responseData.hoaDons)) {
-        hoaDonArray = responseData.hoaDons;
+      if (responseData && responseData.data) {
+        hoaDonArray = responseData.data.hoaDons || [];
+        // Cập nhật pagination state với dữ liệu từ API
+        setPagination({
+          current: responseData.data.currentPage,
+          pageSize: responseData.data.pageSize,
+          total: responseData.data.totalItems
+        });
       }
 
       // Convert any "Chua thanh toán" to "Chưa thanh toán"
@@ -122,7 +130,7 @@ function HoaDon() {
             case "1":
               return hoaDon.trangThai === "Đã thanh toán";
             case "2":
-              return hoaDon.trangThai === "Đã hủy";
+              return hoaDon.trangThai === "Đã thanh toán trước";
             default:
               return true;
           }
@@ -203,7 +211,7 @@ function HoaDon() {
   };
 
   useEffect(() => {
-    fetchHoaDons();
+    fetchHoaDons(pagination.current, pagination.pageSize);
     fetchKhachHang();
     fetchDatPhong();
   }, []);
@@ -438,41 +446,30 @@ function HoaDon() {
     }
   };
 
-  const handlePhuThuOk = async (values) => {
-    if (!selectedMaHoaDon) return;
+  const handleStatusChange = async (newStatus, record) => {
     try {
-      const data = {
-        maDatPhong: values.maDatPhong,
-        phuThu: values.phuThu,
-        lyDo: values.lyDo
-      };
+      const url = `${API_BASE_URL}/api/HoaDon/${record.maHoaDon}/trang-thai${record.tenKhachHang ? `?tenKhachHang=${encodeURIComponent(record.tenKhachHang)}` : ''}`;
+      
+      const response = await apiFetch(url, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': '*/*'
+        },
+        body: JSON.stringify({ trangThai: newStatus }),
+      });
 
-      if (editingPhuThu) {
-        await apiFetch(`${API_BASE_URL}/api/HoaDon/${selectedMaHoaDon}/phu-thu/${editingPhuThu.key.split('-')[1]}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        message.success('Cập nhật phụ thu thành công!');
-      } else {
-        await apiFetch(`${API_BASE_URL}/api/HoaDon/${selectedMaHoaDon}/phu-thu`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        message.success('Thêm phụ thu thành công!');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Cập nhật trạng thái thất bại!');
       }
-      setIsPhuThuFormVisible(false);
-      fetchPhuThu(selectedMaHoaDon);
-    } catch (e) {
-      message.error(editingPhuThu ? 'Cập nhật phụ thu thất bại!' : 'Thêm phụ thu thất bại!');
-    }
-  };
 
-  const handleStatusChange = (value) => {
-    setSearchStatus(value);
-    // Gọi fetchHoaDons để lọc lại dữ liệu
-    fetchHoaDons();
+      message.success('Cập nhật trạng thái thành công!');
+      fetchHoaDons(); // Refresh the table data
+    } catch (error) {
+      console.error('Error updating status:', error);
+      message.error(error.message || 'Cập nhật trạng thái thất bại!');
+    }
   };
 
   const handleNameSearch = (value) => {
@@ -699,6 +696,48 @@ function HoaDon() {
     );
   };
 
+  const handlePhuThuOk = async (values) => {
+    if (!selectedMaHoaDon) return;
+    try {
+      const data = {
+        maDatPhong: values.maDatPhong,
+        phuThu: values.phuThu,
+        lyDo: values.lyDo
+      };
+
+      if (editingPhuThu) {
+        await apiFetch(`${API_BASE_URL}/api/HoaDon/${selectedMaHoaDon}/phu-thu/${editingPhuThu.key.split('-')[1]}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        message.success('Cập nhật phụ thu thành công!');
+      } else {
+        await apiFetch(`${API_BASE_URL}/api/HoaDon/${selectedMaHoaDon}/phu-thu`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        message.success('Thêm phụ thu thành công!');
+      }
+      setIsPhuThuFormVisible(false);
+      fetchPhuThu(selectedMaHoaDon);
+    } catch (e) {
+      message.error(editingPhuThu ? 'Cập nhật phụ thu thất bại!' : 'Thêm phụ thu thất bại!');
+    }
+  };
+
+  const handleFilterStatusChange = (value) => {
+    setSearchStatus(value);
+    fetchHoaDons();
+  };
+
+  // Handle table change (pagination, filters, sorter)
+  const handleTableChange = (newPagination, filters, sorter) => {
+    console.log('Table change:', newPagination);
+    fetchHoaDons(newPagination.current, newPagination.pageSize);
+  };
+
   const columns = [
     {
       title: 'Mã hóa đơn',
@@ -737,9 +776,48 @@ function HoaDon() {
       dataIndex: 'trangThai',
       key: 'trangThai',
       width: '15%',
-      render: (text) => {
-        let color = text === 'Đã thanh toán' ? 'green' : 'red';
-        return <Tag color={color}>{text}</Tag>;
+      render: (text, record) => {
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'Đã thanh toán':
+              return 'green';
+            case 'Đã thanh toán trước':
+              return 'blue';
+            case 'Chưa thanh toán':
+              return 'red';
+            default:
+              return 'default';
+          }
+        };
+
+        return (
+          <Select
+            value={text}
+            style={{
+              width: '100%'
+            }}
+            className="status-select"
+            bordered={false}
+            dropdownMatchSelectWidth={false}
+            onChange={(value) => handleStatusChange(value, record)}
+          >
+            <Select.Option value="Chưa thanh toán">
+              <Tag color="red" style={{ margin: 0, width: '100%', textAlign: 'center' }}>
+                Chưa thanh toán
+              </Tag>
+            </Select.Option>
+            <Select.Option value="Đã thanh toán">
+              <Tag color="green" style={{ margin: 0, width: '100%', textAlign: 'center' }}>
+                Đã thanh toán
+              </Tag>
+            </Select.Option>
+            <Select.Option value="Đã thanh toán trước">
+              <Tag color="blue" style={{ margin: 0, width: '100%', textAlign: 'center' }}>
+                Đã thanh toán trước
+              </Tag>
+            </Select.Option>
+          </Select>
+        );
       },
     },
     {
@@ -836,7 +914,7 @@ function HoaDon() {
           <Select
             placeholder="Lọc theo trạng thái"
             style={{ width: 200 }}
-            onChange={handleStatusChange}
+            onChange={handleFilterStatusChange}
             value={searchStatus}
             allowClear
           >
@@ -852,16 +930,15 @@ function HoaDon() {
 
       <Table
         columns={columns}
-        dataSource={hoaDons || []}
+        dataSource={hoaDons}
         rowKey={(record) => record.maHoaDon}
         loading={loading}
         pagination={{
-          total: hoaDons?.length || 0,
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total) => `Tổng số ${total} hóa đơn`
+          ...pagination,
+          showTotal: (total) => `Tổng số ${total} hóa đơn`,
+          style: { textAlign: 'center' }
         }}
+        onChange={handleTableChange}
         locale={{
           emptyText: 'Không có dữ liệu'
         }}
