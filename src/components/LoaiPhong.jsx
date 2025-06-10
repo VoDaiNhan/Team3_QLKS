@@ -138,6 +138,13 @@ const LoaiPhong = () => {
       render: (gia) => `${gia?.toLocaleString('vi-VN')} VNĐ`,
       sorter: (a, b) => a.giaCoBan - b.giaCoBan,
     },
+    {
+      title: 'Giá Phòng Ngày',
+      dataIndex: 'giaPhongNgay',
+      key: 'giaPhongNgay',
+      render: (gia) => `${gia?.toLocaleString('vi-VN')} VNĐ`,
+      sorter: (a, b) => a.giaPhongNgay - b.giaPhongNgay,
+    },
     { title: 'Số Người Tối Đa', dataIndex: 'soNguoiToiDa', key: 'soNguoiToiDa', sorter: (a, b) => a.soNguoiToiDa - b.soNguoiToiDa },
     {
       title: 'Thao Tác',
@@ -185,9 +192,9 @@ const LoaiPhong = () => {
       <Modal
         title={editingLoaiPhong ? 'Sửa Loại Phòng' : 'Thêm Loại Phòng'}
         open={isModalVisible}
-        onOk={handleOk}
         onCancel={handleCancel}
         destroyOnClose
+        footer={null}
       >
         <Form form={form} layout="vertical" name="loaiPhongForm" initialValues={editingLoaiPhong || {}}>
           <Form.Item
@@ -205,6 +212,13 @@ const LoaiPhong = () => {
             <InputNumber style={{ width: '100%' }} min={0} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/\$\s?|(,*)/g, '')} />
           </Form.Item>
           <Form.Item
+            name="giaPhongNgay"
+            label="Giá Phòng Ngày"
+            rules={[{ required: true, message: 'Vui lòng nhập giá phòng ngày!' }]}
+          >
+            <InputNumber style={{ width: '100%' }} min={0} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/\$\s?|(,*)/g, '')} />
+          </Form.Item>
+          <Form.Item
             name="soNguoiToiDa"
             label="Số Người Tối Đa"
             rules={[{ required: true, message: 'Vui lòng nhập số người tối đa!' }]}
@@ -212,6 +226,14 @@ const LoaiPhong = () => {
             <InputNumber style={{ width: '100%' }} min={1} />
           </Form.Item>
         </Form>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
+          <Button onClick={handleCancel} style={{ minWidth: 80 }}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleOk} style={{ minWidth: 80 }}>
+            OK
+          </Button>
+        </div>
       </Modal>
     </div>
   );
