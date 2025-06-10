@@ -500,7 +500,13 @@ function DatPhong() {
                         const soNguoiO = getFieldValue('soNguoiO') || 1;
                         const maKh = getFieldValue('maKh');
                         const totalKhachHang = (value || []).length + (maKh ? 1 : 0);
-                        if (totalKhachHang > soNguoiO) {
+                        if (soNguoiO >= 2) {
+                          // Nếu số người ở >= 2, yêu cầu phải nhập đủ số khách hàng
+                          if (totalKhachHang !== soNguoiO) {
+                            return Promise.reject(new Error(`Vui lòng chọn đúng ${soNguoiO - 1} khách hàng (không tính khách hàng đại diện)!`));
+                          }
+                        } else if (totalKhachHang > soNguoiO) {
+                          // Nếu số người ở = 1, chỉ kiểm tra không vượt quá
                           return Promise.reject(new Error(`Số lượng khách hàng không được vượt quá ${soNguoiO} người!`));
                         }
                         return Promise.resolve();
