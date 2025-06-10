@@ -31,20 +31,32 @@ function Account() {
   });
   const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
   const [changePasswordForm] = Form.useForm();
+  const [isDeactivateModalVisible, setIsDeactivateModalVisible] = useState(false);
+  const [deactivateForm] = Form.useForm();
+  const [isRestoreModalVisible, setIsRestoreModalVisible] = useState(false);
+  const [restoreForm] = Form.useForm();
+  const [restoreEmail, setRestoreEmail] = useState(null);
 
-  const fetchAllAccounts = async () => {
+  const fetchAllEmails = async () => {
+    let allEmails = [];
+    let page = 1;
+    let pageSize = 50; // lấy nhiều cho nhanh
+    let totalPages = 1;
     try {
-      const res = await apiFetch('https://qlks-0dvh.onrender.com/api/Account/all');
-      const data = await res.json();
-      if (data && data.data) {
-        setAllAccounts(data.data);
-        setStats({
-          total: data.data.length,
-          active: data.data.length
-        });
-      }
+      do {
+        const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/Account?pageNumber=${page}&pageSize=${pageSize}`);
+        const data = await res.json();
+        if (data && data.data && data.data.accounts) {
+          allEmails = allEmails.concat(data.data.accounts.map(acc => acc.email));
+          totalPages = data.data.totalPages || Math.ceil((data.data.totalItems || 0) / pageSize);
+        } else {
+          break;
+        }
+        page++;
+      } while (page <= totalPages);
+      setAllAccounts(allEmails.map(email => ({ email })));
     } catch (error) {
-      console.error('Error fetching all accounts:', error);
+      setAllAccounts([]);
     }
   };
 
@@ -90,7 +102,7 @@ function Account() {
 
   useEffect(() => {
     fetchAccounts(pagination.current, pagination.pageSize);
-    fetchAllAccounts();
+    fetchAllEmails();
   }, [search]);
   
   const handleTableChange = (newPagination) => {
@@ -122,7 +134,7 @@ function Account() {
       setIsCreateAccountModalVisible(false);
       createAccountForm.resetFields();
       setSelectedAccount(null);
-      fetchAccounts(pagination.current, pagination.pageSize);
+    fetchAccounts(pagination.current, pagination.pageSize);
     } catch (error) {
       message.error(error.message || 'Lỗi khi cấp tài khoản');
     }
@@ -190,7 +202,7 @@ function Account() {
       form.resetFields();
       setEditingAccount(null);
       await fetchAccounts(pagination.current, pagination.pageSize);
-      await fetchAllAccounts();
+      await fetchAllEmails();
 
     } catch (error) {
       message.error(error.message);
@@ -204,9 +216,9 @@ function Account() {
   };
 
   const handleChangePassword = async (values) => {
-    try {
+        try {
       const res = await apiFetch('https://qlks-0dvh.onrender.com/api/Auth/password', {
-        method: 'POST',
+            method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: values.email,
@@ -222,8 +234,47 @@ function Account() {
       setIsChangePasswordModalVisible(false);
       changePasswordForm.resetFields();
       setSelectedAccount(null);
-    } catch (error) {
+        } catch (error) {
       message.error(error.message || 'Lỗi khi đổi mật khẩu');
+        }
+  };
+
+  const handleDeactivateAccount = async (values) => {
+    try {
+      const email = values.email;
+      const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/Account/${encodeURIComponent(email)}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Lỗi khi hủy tài khoản');
+      }
+      message.success('Đã hủy tài khoản thành công!');
+      setIsDeactivateModalVisible(false);
+      deactivateForm.resetFields();
+      fetchAccounts(pagination.current, pagination.pageSize);
+    } catch (error) {
+      message.error(error.message || 'Lỗi khi hủy tài khoản!');
+    }
+  };
+
+  const handleRestoreAccount = async () => {
+    try {
+      const email = restoreEmail;
+      const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/Account/restore/${encodeURIComponent(email)}`, {
+        method: 'PUT'
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Lỗi khi khôi phục tài khoản');
+      }
+      message.success('Khôi phục tài khoản thành công!');
+      setIsRestoreModalVisible(false);
+      setRestoreEmail(null);
+      fetchAccounts(pagination.current, pagination.pageSize);
+      fetchAllEmails();
+    } catch (error) {
+      message.error(error.message || 'Lỗi khi khôi phục tài khoản!');
     }
   };
 
@@ -243,39 +294,52 @@ function Account() {
     {
       title: 'Trạng thái',
       key: 'status',
-      render: (_, record) => (
-        <Tag color={record.hasPassword ? "green" : "orange"}>
-          {record.hasPassword ? "Đã cấp tài khoản" : "Chưa cấp tài khoản"}
-        </Tag>
-      ),
+      render: (_, record) => {
+        if (record.isActive === false) {
+          return <Tag color="red">Đã hủy</Tag>;
+        }
+        if (record.hasPassword) {
+          return <Tag color="green">Đã cấp tài khoản</Tag>;
+        }
+        return <Tag color="orange">Chưa cấp tài khoản</Tag>;
+      },
     },
     {
       title: 'Hành động',
       key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button type="primary" ghost onClick={() => showEditModal(record)}>
-            <EditOutlined /> Sửa
-          </Button>
-          {record.hasPassword ? (
-            <Button type="default" onClick={() => showChangePasswordModal(record)}>
-              <KeyOutlined /> Đổi mật khẩu
+      render: (_, record) => {
+        if (record.isActive === false) {
+          return (
+            <Button type="primary" danger onClick={() => { setIsRestoreModalVisible(true); setRestoreEmail(record.email); }}>
+              Restore tài khoản
             </Button>
-          ) : (
-            <Button type="default" onClick={() => showCreateAccountModal(record)}>
-              <UserAddOutlined /> Cấp tài khoản
+          );
+        }
+        return (
+          <Space size="middle">
+            <Button type="primary" ghost onClick={() => showEditModal(record)}>
+              <EditOutlined /> Sửa
             </Button>
-          )}
-        </Space>
-      ),
+            {record.hasPassword ? (
+              <Button type="default" onClick={() => showChangePasswordModal(record)}>
+                <KeyOutlined /> Đổi mật khẩu
+              </Button>
+            ) : (
+              <Button type="default" onClick={() => showCreateAccountModal(record)}>
+                <UserAddOutlined /> Cấp tài khoản
+              </Button>
+            )}
+          </Space>
+        );
+      },
     }
   ];
 
   return (
     <div className="account-container">
       <div className="header-section">
-        <Title level={2}>Quản lý tài khoản</Title>
-        <div className="action-buttons">
+      <Title level={2}>Quản lý tài khoản</Title>
+      <div className="action-buttons">
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -301,24 +365,31 @@ function Account() {
           >
             Làm mới
           </Button>
+          <Button
+            danger
+            onClick={() => setIsDeactivateModalVisible(true)}
+            style={{ marginLeft: 8 }}
+          >
+            Hủy tài khoản
+          </Button>
         </div>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={accounts} 
-        rowKey="email" 
-        loading={loading}
+        <Table 
+          columns={columns} 
+          dataSource={accounts} 
+          rowKey="email" 
+          loading={loading} 
         scroll={{ x: 'max-content' }}
-        pagination={{
-          ...pagination,
+          pagination={{
+            ...pagination,
           showSizeChanger: true,
           showQuickJumper: true,
           showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} tài khoản`,
           pageSize: 10
-        }}
-        onChange={handleTableChange}
-      />
+          }}
+          onChange={handleTableChange}
+        />
 
       <Modal
         title={editingAccount ? 'Sửa tài khoản' : 'Thêm tài khoản'}
@@ -478,6 +549,76 @@ function Account() {
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Đổi mật khẩu
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Hủy tài khoản"
+        open={isDeactivateModalVisible}
+        onCancel={() => {
+          setIsDeactivateModalVisible(false);
+          deactivateForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          form={deactivateForm}
+          layout="vertical"
+          onFinish={handleDeactivateAccount}
+        >
+          <Form.Item
+            label="Chọn email tài khoản muốn hủy"
+            name="email"
+            rules={[{ required: true, message: 'Vui lòng chọn email!' }]}
+          >
+            <Select
+              showSearch
+              placeholder="Chọn email"
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {allAccounts.map(acc => (
+                <Option key={acc.email} value={acc.email}>{acc.email}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" danger>
+              Hủy tài khoản
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Khôi phục tài khoản"
+        open={isRestoreModalVisible}
+        onCancel={() => {
+          setIsRestoreModalVisible(false);
+          setRestoreEmail(null);
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleRestoreAccount}
+          initialValues={{ email: restoreEmail }}
+        >
+          <Form.Item
+            label="Email tài khoản muốn khôi phục"
+            name="email"
+          >
+            <Input value={restoreEmail} disabled />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Khôi phục tài khoản
             </Button>
           </Form.Item>
         </Form>
