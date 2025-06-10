@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import './KhachHang.css';
 import { apiFetch } from '../auth';
+import { Modal as AntdModal } from 'antd';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -26,6 +27,7 @@ function KhachHang() {
     total: 0,
     active: 0,
   });
+  const [duplicateModalVisible, setDuplicateModalVisible] = useState(false);
 
   const fetchKhachHangs = async () => {
     setLoading(true);
@@ -69,11 +71,10 @@ function KhachHang() {
         form.resetFields();
         fetchKhachHangs();
       } else {
-        message.error('Thêm khách hàng mới thất bại!');
+        setDuplicateModalVisible(true);
       }
     } catch (error) {
-      console.error('Error adding customer:', error);
-      message.error('Đã xảy ra lỗi khi thêm khách hàng mới!');
+      setDuplicateModalVisible(true);
     }
   };
 
@@ -91,11 +92,10 @@ function KhachHang() {
         form.resetFields();
         fetchKhachHangs();
       } else {
-        message.error('Cập nhật khách hàng thất bại!');
+        setDuplicateModalVisible(true);
       }
     } catch (error) {
-      console.error('Error updating customer:', error);
-      message.error('Đã xảy ra lỗi khi cập nhật khách hàng!');
+      setDuplicateModalVisible(true);
     }
   };
 
@@ -374,6 +374,23 @@ function KhachHang() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Modal cảnh báo trùng CCCD hoặc SĐT */}
+      <AntdModal
+        open={duplicateModalVisible}
+        onCancel={() => setDuplicateModalVisible(false)}
+        footer={[
+          <Button key="ok" type="primary" onClick={() => setDuplicateModalVisible(false)}>
+            OK
+          </Button>
+        ]}
+        centered
+        zIndex={2000}
+      >
+        <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: 16, color: '#e53e3e'}}>
+          Trùng CCCD hoặc SĐT!<br/>Vui lòng kiểm tra lại thông tin khách hàng.
+        </div>
+      </AntdModal>
     </div>
   );
 }
