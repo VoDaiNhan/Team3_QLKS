@@ -229,7 +229,7 @@ function Phong() {
           style={{ width: 130 }}
           onChange={async (newTrangThai) => {
             try {
-              const API_URL = process.env.REACT_APP_API_URL || 'https://localhost:7274';
+              const API_URL = process.env.REACT_APP_API_URL || 'https://qlks-0dvh.onrender.com';
               const response = await apiFetch(`${API_URL}/api/Phong/${record.maPhong}/trang-thai?trangThai=${encodeURIComponent(newTrangThai)}`, {
                 method: 'PUT',
                 headers: {
@@ -324,7 +324,7 @@ function Phong() {
   const handleUpdateStatus = async (trangThai) => {
     if (!selectedPhong) return;
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'https://localhost:7274';
+      const API_URL = process.env.REACT_APP_API_URL || 'https://qlks-0dvh.onrender.com';
       const response = await apiFetch(`${API_URL}/api/Phong/${selectedPhong.maPhong}/trang-thai?trangThai=${encodeURIComponent(trangThai)}`, {
         method: 'PUT',
         headers: {
