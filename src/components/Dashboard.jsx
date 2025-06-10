@@ -1,379 +1,704 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, Routes, Route, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Dropdown, Space, Avatar } from 'antd';
-import { BiMenu, BiUser, BiBook, BiChart, BiLogOut, BiHome, BiKey, BiDownArrow } from 'react-icons/bi';
-import { useTheme } from '../contexts/ThemeContext';
+import { Table, Button, Modal, Form, DatePicker, Space, Popconfirm, message, Select, InputNumber, Spin, Descriptions, List, Tag, Tooltip, Dropdown } from 'antd';
 import { apiFetch } from '../auth';
-import { jwtDecode } from 'jwt-decode';
-import Switch from './Switch';
-import Phong from './Phong';
-import DichVu from './DichVu';
-import KhachHang from './KhachHang';
-import NhanVien from './NhanVien';
-import LoaiPhong from './LoaiPhong';
-import Account from './Account';
-import DatPhong from './DatPhong';
-import HoaDon from './HoaDon';
-import ThongKe from './ThongKe';
-import PhuThu from './PhuThu';
-import SuDungDichVu from './SuDungDichVu';
-import './Dashboard.css';
+import dayjs from 'dayjs';
+import './DatPhong.css';
+import { DownOutlined } from '@ant-design/icons';
 
-// Icons import
-import { MdHotel, MdRoomService, MdMeetingRoom, MdAssignment, MdReceipt, MdAttachMoney, MdMiscellaneousServices, MdDashboard, MdPeople, MdPriceChange, MdBarChart, MdAssessment, MdPerson } from 'react-icons/md';
-import ChangePassword from './ChangePassword';
+function DatPhong() {
+  const [datPhongs, setDatPhongs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingDatPhong, setEditingDatPhong] = useState(null);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [chiTietDatPhong, setChiTietDatPhong] = useState(null);
+  const [phongs, setPhongs] = useState([]);
+  const [khachHangs, setKhachHangs] = useState([]);
+  const [loadingPhong, setLoadingPhong] = useState(false);
+  const [loadingKhachHang, setLoadingKhachHang] = useState(false);
+  const [form] = Form.useForm();
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedMaKh, setSelectedMaKh] = useState(null);
 
-const menuItems = [
-  { icon: <MdDashboard size={24} />, label: 'Dashboard', path: '/dashboard' },
-  { icon: <MdPeople size={24} />, label: 'Khách hàng', path: '/dashboard/khachhang' },
-  { icon: <MdMeetingRoom size={24} />, label: 'Phòng', path: '/dashboard/phong' },
-  { icon: <MdHotel size={24} />, label: 'Loại phòng', path: '/dashboard/loaiphong' },
-  { icon: <MdRoomService size={24} />, label: 'Dịch vụ', path: '/dashboard/dichvu' },
-  { icon: <MdReceipt size={24} />, label: 'Hóa đơn', path: '/dashboard/hoadon' },
-  { icon: <MdAssignment size={24} />, label: 'Đặt phòng', path: '/dashboard/datphong' },
-  { icon: <MdPriceChange size={24} />, label: 'Phụ thu', path: '/dashboard/phuthu' },
-  { icon: <MdMiscellaneousServices size={24} />, label: 'Sử dụng dịch vụ', path: '/dashboard/sudungdichvu' },
-  { icon: <MdBarChart size={24} />, label: 'Thống kê', path: '/dashboard/thongke' },
-  { icon: <MdPerson size={24} />, label: 'Tài khoản', path: '/dashboard/account' },
-];
-
-const StatCard = ({ icon, label, value, type }) => (
-  <motion.div 
-    className={`stat-card ${type}`}
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-  >
-    <div className="stat-icon">{icon}</div>
-    <div className="stat-info">
-      <h3>{value}</h3>
-      <p>{label}</p>
-    </div>
-  </motion.div>
-);
-
-const Dashboard = () => {
-  const [dashboardStats, setDashboardStats] = useState({
-    totalRevenue: 0,
-    totalBookings: 0,
-    availableRooms: 0,
-    occupiedRooms: 0,
-  });
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [userInfo, setUserInfo] = useState(null);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { isDarkMode, toggleTheme } = useTheme();
-
-  useEffect(() => {
-    const getUserInfoFromToken = async () => {
-      try {
-        const dbName = "AuthDB";
-        const dbVersion = 1;
-        const request = indexedDB.open(dbName, dbVersion);
-
-        request.onerror = (event) => {
-          console.error("IndexedDB error:", event.target.error);
-        };
-
-        request.onsuccess = (event) => {
-          const db = event.target.result;
-          const transaction = db.transaction(["tokens"], "readonly");
-          const store = transaction.objectStore("tokens");
-          const getRequest = store.get("auth");
-
-          getRequest.onsuccess = () => {
-            const result = getRequest.result;
-            if (result && result.token) {
-              const decoded = jwtDecode(result.token);
-              console.log("Decoded token:", decoded);
-              
-              setUserInfo({
-                hoTen: decoded.HoTen,
-                role: decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
-                email: decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"],
-                maNv: decoded.MaNv
-              });
-            } else {
-              console.error("Không tìm thấy token");
-              navigate('/login');
-            }
-          };
-        };
-      } catch (error) {
-        console.error("Lỗi khi lấy thông tin user:", error);
-        navigate('/login');
+  // Lấy danh sách đặt phòng
+  const fetchDatPhongs = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch('https://qlks-0dvh.onrender.com/api/DatPhong?pageNumber=1&pageSize=20');
+      const data = await res.json();
+      console.log('API Response (fetchDatPhongs):', JSON.stringify(data, null, 2));
+      let list = [];
+      if (data && data.data && Array.isArray(data.data.datPhongs)) {
+        list = data.data.datPhongs;
+      } else if (data && Array.isArray(data.datPhongs)) {
+        list = data.datPhongs;
+      } else if (data && Array.isArray(data.DatPhongs)) {
+        list = data.DatPhongs;
+      } else if (Array.isArray(data)) {
+        list = data;
       }
-    };
 
-    getUserInfoFromToken();
-  }, [navigate]);
+      // Nếu API không trả về danhSachKhachHang, gọi API chi tiết cho từng đặt phòng
+      const detailedList = await Promise.all(
+        list.map(async (dp) => {
+          if (!dp.danhSachKhachHang || dp.danhSachKhachHang.length === 0) {
+            const detailRes = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${dp.maDatPhong}`);
+            const detailData = await detailRes.json();
+            return {
+              ...dp,
+              danhSachKhachHang: detailData.danhSachKhachHang || [], // Đảm bảo có danhSachKhachHang
+            };
+          }
+          return dp;
+        })
+      );
+
+      setDatPhongs(detailedList);
+      if (detailedList.length === 0) message.warning('Không có dữ liệu đặt phòng!');
+    } catch (e) {
+      console.error('Error fetching datPhongs:', e);
+      setDatPhongs([]);
+      message.error('Không thể lấy dữ liệu đặt phòng!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lấy danh sách phòng
+  const fetchPhongs = async () => {
+    setLoadingPhong(true);
+    try {
+      const res = await apiFetch('https://qlks-0dvh.onrender.com/api/Phong?pageNumber=1&pageSize=100');
+      const data = await res.json();
+      console.log('API Response (fetchPhongs):', JSON.stringify(data, null, 2));
+      let list = [];
+      if (data && data.data && Array.isArray(data.data.phongs)) {
+        list = data.data.phongs;
+      } else if (data && Array.isArray(data.phongs)) {
+        list = data.phongs;
+      } else if (data && Array.isArray(data.Phongs)) {
+        list = data.Phongs;
+      } else if (Array.isArray(data)) {
+        list = data;
+      }
+      setPhongs(list);
+      if (list.length === 0) message.warning('Không có phòng nào trong hệ thống!');
+    } catch (e) {
+      console.error('Error fetching phongs:', e);
+      setPhongs([]);
+      message.error('Không thể lấy dữ liệu phòng!');
+    } finally {
+      setLoadingPhong(false);
+    }
+  };
+
+  // Lấy danh sách khách hàng
+  const fetchKhachHangs = async () => {
+    setLoadingKhachHang(true);
+    try {
+      const res = await apiFetch('https://qlks-0dvh.onrender.com/api/KhachHang?pageNumber=1&pageSize=100');
+      const data = await res.json();
+      console.log('API Response (fetchKhachHangs):', JSON.stringify(data, null, 2));
+      let list = [];
+      if (data && data.data && Array.isArray(data.data.khachHangs)) {
+        list = data.data.khachHangs;
+      } else if (data && Array.isArray(data.khachHangs)) {
+        list = data.khachHangs;
+      } else if (data && Array.isArray(data.KhachHangs)) {
+        list = data.KhachHangs;
+      } else if (Array.isArray(data)) {
+        list = data;
+      }
+      const filtered = list.filter(kh => !kh.trangThai || kh.trangThai.toLowerCase() !== 'vô hiệu hóa');
+      setKhachHangs(filtered);
+      if (filtered.length === 0) message.warning('Không có khách hàng nào trong hệ thống!');
+    } catch (e) {
+      console.error('Error fetching khachHangs:', e);
+      setKhachHangs([]);
+      message.error('Không thể lấy dữ liệu khách hàng!');
+    } finally {
+      setLoadingKhachHang(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardStats = async () => {
-      setLoadingStats(true);
-      try {
-        let totalRevenue = 0;
-        
-        // Revenue is only available for 'QuanLy' role
-        console.log("Kiểm tra vai trò:", userInfo?.role); // Log 1: Check role
-        if (userInfo?.role?.toLowerCase() === 'quanly') {
-          const startDate = '2000-01-01';
-          const endDate = new Date().toISOString().split('T')[0]; // Today's date
-          const revenueResponse = await apiFetch(`https://qlks-0dvh.onrender.com/api/ThongKe/khoang-thoi-gian?tuNgay=${startDate}&denNgay=${endDate}`);
-          
-          if (revenueResponse.ok) {
-            const revenueData = await revenueResponse.json();
-            console.log("Dữ liệu doanh thu từ API:", revenueData); // Log 2: Check API response
-            totalRevenue = revenueData.data?.tongDoanhThu || 0;
-            console.log("Doanh thu đã xử lý:", totalRevenue); // Log 3: Check processed value
-          } else {
-            console.warn(`Không thể tải doanh thu, status: ${revenueResponse.status}`);
-          }
+    fetchDatPhongs();
+    fetchPhongs();
+    fetchKhachHangs();
+  }, []);
+
+  // Đồng bộ dữ liệu sau khi thực hiện thao tác
+  const syncData = async () => {
+    await Promise.all([fetchDatPhongs(), fetchPhongs(), fetchKhachHangs()]);
+  };
+
+
+  // Xử lý xóa đặt phòng
+  const handleDelete = async (maDatPhong) => {
+    try {
+      const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${maDatPhong}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          throw new Error('Bạn không có quyền xóa đặt phòng này. Vui lòng kiểm tra quyền truy cập.');
+        }
+        throw new Error(errorData.message || `Xóa đặt phòng ${maDatPhong} thất bại! Mã lỗi: ${res.status}`);
+      }
+      message.success(`Xóa đặt phòng ${maDatPhong} thành công!`);
+      setDatPhongs(prev => prev.filter(item => item.maDatPhong !== maDatPhong));
+      await syncData();
+    } catch (e) {
+      console.error('Error deleting datPhong:', e);
+      message.error(`Lỗi: ${e.message}`);
+    }
+  };
+
+  // Hiển thị modal thêm/sửa
+  const showModal = async (record = null) => {
+    setEditingDatPhong(record);
+    setIsModalVisible(true);
+    setTimeout(() => {
+      if (record) {
+        form.setFieldsValue({
+          ...record,
+          ngayNhanPhong: record.ngayNhanPhong ? dayjs(record.ngayNhanPhong) : null,
+          ngayTraPhong: record.ngayTraPhong ? dayjs(record.ngayTraPhong) : null,
+          maKhList: record.danhSachKhachHang ? record.danhSachKhachHang.map(kh => kh.maKh) : [],
+          soNguoiO: record.soNguoiO || 1,
+        });
+      } else {
+        form.resetFields();
+        form.setFieldsValue({ soNguoiO: 1 });
+      }
+    }, 0);
+  };
+
+  const showDetailModal = async (maDatPhong) => {
+    setLoading(true);
+    try {
+      const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${maDatPhong}`);
+      const data = await res.json();
+      if (data.data) {
+        setChiTietDatPhong(data.data);
+        setIsDetailModalVisible(true);
+      } else {
+        message.error('Không thể tải chi tiết đặt phòng!');
+      }
+    } catch (error) {
+      message.error('Lỗi khi tải chi tiết đặt phòng!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Xử lý thêm/sửa đặt phòng
+  const handleOk = async (values) => {
+    try {
+      if (!values.maPhong) throw new Error('Vui lòng chọn phòng!');
+      if (!values.maKh) throw new Error('Vui lòng chọn khách hàng đại diện!');
+      if (!values.ngayNhanPhong || !values.ngayTraPhong) throw new Error('Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng!');
+      if (dayjs(values.ngayNhanPhong).isAfter(dayjs(values.ngayTraPhong), 'minute')) {
+        throw new Error('Ngày nhận phòng phải trước hoặc bằng ngày trả phòng!');
+      }
+      if (!values.soNguoiO || values.soNguoiO < 1) throw new Error('Số người ở phải lớn hơn 0!');
+
+      let maKhList = values.maKhList || [];
+      if (!maKhList.includes(values.maKh)) {
+        maKhList = [values.maKh, ...maKhList];
+      }
+
+      if (maKhList.length > values.soNguoiO) {
+        message.warning(`Số lượng khách hàng (${maKhList.length}) vượt quá số người ở (${values.soNguoiO}). Vui lòng điều chỉnh!`);
+        return;
+      }
+
+      const updatedValues = {
+        ...values,
+        maKhList: maKhList,
+      };
+
+      let newMaDatPhong = null;
+      if (editingDatPhong) {
+        const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${editingDatPhong.maDatPhong}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...updatedValues,
+            maKhList: updatedValues.maKhList,
+            ngayNhanPhong: dayjs(updatedValues.ngayNhanPhong).format('YYYY-MM-DD HH:mm'),
+            ngayTraPhong: dayjs(updatedValues.ngayTraPhong).format('YYYY-MM-DD HH:mm'),
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || 'Cập nhật thất bại');
+        }
+        message.success('Cập nhật thành công!');
+      } else {
+        const payload = {
+          datPhong: {
+            MaNv: null,
+            MaKh: updatedValues.maKh ? Number(updatedValues.maKh) : null,
+            MaPhong: updatedValues.maPhong ? String(updatedValues.maPhong) : null,
+            NgayDat: dayjs().format('YYYY-MM-DD'),
+            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
+            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+            SoNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 1,
+            TrangThai: updatedValues.trangThai || 'Đã đặt'
+          },
+          maKhList: maKhList.map(Number),
+          DatPhongVMs: [{
+            MaKh: updatedValues.maKh ? Number(updatedValues.maKh) : null,
+            MaPhong: updatedValues.maPhong ? String(updatedValues.maPhong) : null,
+            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
+            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+            SoNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 1,
+            TrangThai: updatedValues.trangThai || 'Đã đặt'
+          }]
+        };
+
+        console.log('Payload gửi đi:', JSON.stringify(payload, null, 2));
+
+        const res = await apiFetch('https://qlks-0dvh.onrender.com/api/DatPhong', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error('API Error details:', {
+            status: res.status,
+            statusText: res.statusText,
+            data: errorData
+          });
+          throw new Error(
+            errorData.errors ? 
+              Object.values(errorData.errors).flat().join(', ') : 
+              errorData.message || errorData.title || 'Thêm mới thất bại'
+          );
         }
 
-        // 1. Get total bookings from HoaDon endpoint (accessible by NhanVien)
-        const hoaDonResponse = await apiFetch('https://qlks-0dvh.onrender.com/api/hoadon?pageSize=1');
-        const hoaDonData = await hoaDonResponse.json();
-        const totalBookings = hoaDonData.data?.totalItems || 0;
-        
-        // 2. Get room status statistics (accessible by NhanVien)
-        const roomStatusResponse = await apiFetch('https://qlks-0dvh.onrender.com/api/Phong/thong-ke-trang-thai');
-        const roomStatusData = await roomStatusResponse.json();
-        const availableRooms = roomStatusData.data?.['Trống'] || 0;
-        const occupiedRooms = roomStatusData.data?.['Đang sử dụng'] || 0;
-
-        setDashboardStats({
-            totalRevenue,
-            totalBookings,
-            availableRooms,
-            occupiedRooms,
-        });
-
-      } catch (error) {
-        console.error("Lỗi khi tải thống kê cho dashboard:", error);
-        // Set default values on error to avoid crash
-        setDashboardStats({
-            totalRevenue: 0,
-            totalBookings: 0,
-            availableRooms: 0,
-            occupiedRooms: 0,
-        });
-      } finally {
-        setLoadingStats(false);
+        const responseData = await res.json();
+        newMaDatPhong = responseData.maDatPhong;
+        message.success('Thêm mới thành công!');
       }
-    };
 
-    fetchDashboardStats();
-  }, [userInfo]);
+      setIsModalVisible(false);
+      setEditingDatPhong(null);
+      form.resetFields();
 
-  const handleLogout = () => {
-    const dbName = "AuthDB";
-    const dbVersion = 1;
-    const request = indexedDB.open(dbName, dbVersion);
+      // Sau khi thêm mới, lấy thông tin chi tiết của đặt phòng vừa tạo
+      if (newMaDatPhong) {
+        const detailRes = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${newMaDatPhong}`);
+        const newDatPhong = await detailRes.json();
+        setDatPhongs(prev => [newDatPhong, ...prev.filter(dp => dp.maDatPhong !== newMaDatPhong)]);
+      }
 
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      const transaction = db.transaction(["tokens"], "readwrite");
-      const store = transaction.objectStore("tokens");
-      store.delete("auth");
-      
-    navigate('/login');
-    };
+      await syncData();
+    } catch (e) {
+      console.error('Error in handleOk:', e);
+      message.error(e.message || 'Có lỗi xảy ra!');
+    }
   };
 
-  const formatCurrency = (value) => {
-    if (!value) return '0 VNĐ';
-    return `${Math.round(value).toLocaleString('vi-VN')} VNĐ`;
+  const handleStatusUpdate = async (maDatPhong, newStatus) => {
+    try {
+      const response = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/bookings/${maDatPhong}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newStatus)
+      });
+
+      if (!response.ok) {
+        throw new Error('Cập nhật trạng thái thất bại');
+      }
+
+      message.success('Cập nhật trạng thái thành công');
+      fetchDatPhongs(); // Refresh data
+    } catch (error) {
+      message.error('Lỗi khi cập nhật trạng thái: ' + error.message);
+    }
   };
 
-  const stats = [
-    { icon: <MdHotel size={32} />, label: 'Phòng trống', value: loadingStats ? '...' : dashboardStats.availableRooms, type: 'primary' },
-    { icon: <MdRoomService size={32} />, label: 'Đang sử dụng', value: loadingStats ? '...' : dashboardStats.occupiedRooms, type: 'success' },
-    { icon: <MdAssignment size={32} />, label: 'Tổng đặt phòng', value: loadingStats ? '...' : dashboardStats.totalBookings, type: 'warning' },
-    { icon: <BiChart size={32} />, label: 'Doanh thu', value: loadingStats ? '...' : formatCurrency(dashboardStats.totalRevenue), type: 'info' },
+  const columns = [
+    { title: 'Mã đặt phòng', dataIndex: 'maDatPhong', key: 'maDatPhong' },
+    {
+      title: 'Khách hàng',
+      key: 'khachHang',
+      render: (_, record) => {
+        // Kiểm tra nếu danhSachKhachHang tồn tại và là mảng
+        if (record.danhSachKhachHang && Array.isArray(record.danhSachKhachHang) && record.danhSachKhachHang.length > 0) {
+          return record.danhSachKhachHang.map(kh => kh.hoTen || 'Không có tên').join(', ');
+        }
+        // Nếu không có danhSachKhachHang, hiển thị khách hàng đại diện (MaKh)
+        if (record.maKh) {
+          const khachHang = khachHangs.find(kh => kh.maKh === record.maKh);
+          return khachHang ? khachHang.hoTen : 'Không xác định';
+        }
+        return 'Không có khách hàng';
+      },
+    },
+    { title: 'Phòng', dataIndex: 'maPhong', key: 'maPhong' },
+    { title: 'Ngày nhận', dataIndex: 'ngayNhanPhong', key: 'ngayNhanPhong' },
+    { title: 'Ngày trả', dataIndex: 'ngayTraPhong', key: 'ngayTraPhong' },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'trangThai',
+      key: 'trangThai',
+      render: (text, record) => {
+        const items = [
+          'Đang sử dụng',
+          'Hủy',
+          'Hoàn thành',
+          'Đã đặt'
+        ]
+        .filter(status => status !== text)
+        .map(status => ({
+          key: status,
+          label: status,
+          onClick: () => handleStatusUpdate(record.maDatPhong, status)
+        }));
+
+        return (
+          <Dropdown
+            menu={{ items }}
+            trigger={['click']}
+          >
+            <Tag 
+              color={
+                text === 'Đã đặt' ? 'blue' : 
+                text === 'Đang sử dụng' ? 'green' :
+                text === 'Hoàn thành' ? 'purple' :
+                text === 'Hủy' ? 'red' : 'default'
+              }
+              style={{ cursor: 'pointer' }}
+            >
+              {text} <DownOutlined style={{ fontSize: '12px' }} />
+            </Tag>
+          </Dropdown>
+        );
+      },
+    },
+    { title: 'Phụ thu', dataIndex: 'phuThu', key: 'phuThu', render: (value) => (value != null ? value : 0) },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_, record) => (
+        <Space size="middle">
+          <Button onClick={() => showDetailModal(record.maDatPhong)}>Xem chi tiết</Button>
+          <Button type="primary" onClick={() => showModal(record)}>Sửa</Button>
+          <Popconfirm
+            title="Bạn có chắc muốn xóa?"
+            onConfirm={() => handleDelete(record.maDatPhong)}
+            okText="Có"
+            cancelText="Không"
+          >
+            <Button danger>Xóa</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
-  
-  // Lấy tên trang hiện tại từ path
-  const currentPage = menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard';
-
-  // Kiểm tra role để lọc menu items
-  const filteredMenuItems = menuItems.filter(item => {
-    if (item.label === 'Tài khoản') return true;
-    if (userInfo?.role?.toLowerCase() === 'quanly') return true;
-    return !item.adminOnly;
-  });
 
   return (
-    <div className="dashboard-container">
-      {/* Sidebar */}
-      <motion.div 
-        className="sidebar open"
-        animate={{ width: '240px' }}
-        transition={{ duration: 0.3, type: "tween" }}
+    <div style={{ padding: 24 }}>
+      <h2>Quản lý đặt phòng</h2>
+      <Space style={{ marginBottom: 16 }}>
+        <Button type="primary" onClick={() => showModal(null)}>
+          Thêm đặt phòng
+        </Button>
+        <Button onClick={fetchDatPhongs}>Làm mới</Button>
+      </Space>
+      <Table columns={columns} dataSource={datPhongs} rowKey="maDatPhong" loading={loading} />
+      <Modal
+        title={editingDatPhong ? 'Sửa đặt phòng' : 'Thêm đặt phòng'}
+        open={isModalVisible}
+        onCancel={() => {
+          setIsModalVisible(false);
+          form.resetFields();
+        }}
+        footer={null}
+        destroyOnHidden
+        width={900}
       >
-        <div className="sidebar-header">
-          <motion.h1 animate={{ opacity: 1 }}>
-            QLKS
-          </motion.h1>
-          <div className="user-info">
-            <Space>
-              <Avatar icon={<BiUser />} />
-              <span className="user-name">{userInfo?.hoTen || 'User'}</span>
-            </Space>
-          </div>
-        </div>
-        <div className="sidebar-menu">
-          {filteredMenuItems.map((item, index) => (
-            <motion.div
-              key={item.path}
-              className="menu-item"
-              whileHover={{ scale: 1.02, x: 5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link 
-                to={item.path} 
-                className={`menu-link ${location.pathname === item.path ? 'active' : ''}`}
+        <Spin spinning={loadingPhong || loadingKhachHang}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleOk}
+            onFinishFailed={({ errorFields }) => {
+              if (errorFields && errorFields.length > 0) {
+                message.error(errorFields[0].errors[0] || 'Vui lòng điền đầy đủ thông tin!');
+              }
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+            <Form.Item label="Mã phòng" name="maPhong" rules={[{ required: true, message: 'Chọn phòng!' }]}>
+              <Select
+                placeholder={phongs.length === 0 ? 'Không có phòng' : 'Chọn phòng'}
+                loading={loadingPhong}
+                showSearch
+                optionFilterProp="children"
+                allowClear
               >
-                {item.icon}
-                <motion.span
-                  animate={{ opacity: 1 }}
-                  className="menu-label"
-                >
-                  {item.label}
-                </motion.span>
-              </Link>
-            </motion.div>
-          ))}
-          
-          {/* Logout button */}
-          <div className="logout-item">
-            <button onClick={handleLogout} className="logout-button">
-              <BiLogOut />
-              <span>Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Main Content */}
-      <main className="main-content sidebar-open">
-        <div className="top-bar">
-          <div className="page-title">{currentPage}</div>
-          <div className="top-bar-right">
-            <Switch isDarkMode={isDarkMode} onChange={toggleTheme} />
-          </div>
-        </div>
-
-        <Routes>
-          <Route path="/" element={
-            <div className="dashboard-content">
-              <div className="welcome-section">
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  {userInfo?.role?.toLowerCase() === 'quanly'
-                    ? `Chào mừng Quản lý ${userInfo?.hoTen} đã trở lại`
-                    : `Chào mừng Nhân viên ${userInfo?.hoTen} đã trở lại`
-                  }
-                </motion.h1>
-              </div>
-
-              <div className="stats-grid">
-                {stats.map((stat, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <StatCard {...stat} />
-                  </motion.div>
+                {phongs.map((phong) => (
+                  <Select.Option key={phong.maPhong} value={phong.maPhong}>
+                    {phong.tenPhong} ({phong.maPhong})
+                  </Select.Option>
                 ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label="Khách hàng đại diện"
+              name="maKh"
+              rules={[{ required: true, message: 'Chọn khách hàng!' }]}
+            >
+              <Select
+                placeholder="Chọn khách hàng"
+                loading={loadingKhachHang}
+                showSearch
+                optionFilterProp="children"
+                allowClear
+                onChange={value => setSelectedMaKh(value)}
+              >
+                {khachHangs.map((kh) => (
+                  <Select.Option key={kh.maKh} value={kh.maKh}>
+                    {kh.hoTen}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label="Ngày nhận phòng"
+              name="ngayNhanPhong"
+              rules={[{ required: true, message: 'Chọn ngày nhận!' }]}
+            >
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm" />
+            </Form.Item>
               </div>
 
-              <div className="quick-actions">
-                <motion.h2
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  Thao tác nhanh
-                </motion.h2>
-                <div className="action-buttons">
-                  {filteredMenuItems.slice(1).map((item, index) => (
-                    <motion.button
-                      key={item.path}
-                      className="action-button"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => navigate(item.path)}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.7 + index * 0.1 }}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </motion.button>
+              <div>
+            <Form.Item
+              label="Số người ở"
+              name="soNguoiO"
+              rules={[{ required: true, type: 'number', min: 1, message: 'Nhập số người ở (>=1)!' }]}
+            >
+              <InputNumber min={1} style={{ width: '100%' }} onChange={() => form.validateFields(['maKhList'])} />
+            </Form.Item>
+
+            <Form.Item
+              label="Khách hàng (nhiều)"
+              name="maKhList"
+              extra="Chọn thêm khách hàng nếu có. Khách hàng đại diện sẽ tự động được thêm vào danh sách."
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const soNguoiO = getFieldValue('soNguoiO') || 1;
+                    const maKh = getFieldValue('maKh');
+                    const totalKhachHang = (value || []).length + (maKh ? 1 : 0);
+                    if (totalKhachHang > soNguoiO) {
+                      return Promise.reject(new Error(`Số lượng khách hàng không được vượt quá ${soNguoiO} người!`));
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Chọn thêm khách hàng (nếu có)"
+                loading={loadingKhachHang}
+                optionFilterProp="children"
+                showSearch
+                allowClear
+              >
+                {khachHangs
+                  .filter((kh) => kh.maKh !== (selectedMaKh ?? form.getFieldValue('maKh')))
+                  .map((kh) => (
+                    <Select.Option key={kh.maKh} value={kh.maKh}>
+                      {kh.hoTen}
+                    </Select.Option>
                   ))}
+              </Select>
+            </Form.Item>
+
+                <Form.Item
+                  label="Ngày trả phòng"
+                  name="ngayTraPhong"
+                  rules={[{ required: true, message: 'Chọn ngày trả!' }]}
+                >
+                  <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm" />
+            </Form.Item>
+              </div>
+            </div>
+
+            <Form.Item style={{ marginTop: '20px', textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => {
+                  setIsModalVisible(false);
+                  form.resetFields();
+                }}>
+                  Hủy
+                </Button>
+                <Button type="primary" htmlType="submit">
+                {editingDatPhong ? 'Lưu' : 'Thêm đặt phòng'}
+              </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
+      <Modal
+        title="Chi tiết Đặt phòng"
+        open={isDetailModalVisible}
+        onCancel={() => setIsDetailModalVisible(false)}
+        footer={null}
+        width={800}
+        bodyStyle={{ 
+          maxHeight: 'calc(100vh - 200px)',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: '20px',
+          '&::-webkit-scrollbar': {
+            width: '0px'
+          },
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
+        {chiTietDatPhong && (
+          <div>
+            <Descriptions 
+              bordered 
+              column={1}
+              labelStyle={{ width: '200px', fontWeight: '500' }}
+              contentStyle={{ background: '#fff' }}
+            >
+              <Descriptions.Item label="Mã đặt phòng">{chiTietDatPhong.maDatPhong}</Descriptions.Item>
+              <Descriptions.Item label="Tên phòng">{chiTietDatPhong.tenPhong || chiTietDatPhong.maPhong}</Descriptions.Item>
+              <Descriptions.Item label="Khách hàng đại diện">{chiTietDatPhong.tenKhachHang}</Descriptions.Item>
+              <Descriptions.Item label="Ngày đặt">{dayjs(chiTietDatPhong.ngayDat).format('DD/MM/YYYY')}</Descriptions.Item>
+              <Descriptions.Item label="Ngày nhận phòng">{dayjs(chiTietDatPhong.ngayNhanPhong).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+              <Descriptions.Item label="Ngày trả phòng">{dayjs(chiTietDatPhong.ngayTraPhong).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+              <Descriptions.Item label="Số người ở">{chiTietDatPhong.soNguoiO}</Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={
+                  chiTietDatPhong.trangThai === 'Đã đặt' ? 'blue' : 
+                  chiTietDatPhong.trangThai === 'Đang sử dụng' ? 'green' :
+                  chiTietDatPhong.trangThai === 'Hoàn thành' ? 'purple' :
+                  chiTietDatPhong.trangThai === 'Hủy' ? 'red' : 'default'
+                }>
+                  {chiTietDatPhong.trangThai}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Tổng tiền phòng">
+                {chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Phụ thu">
+                {chiTietDatPhong.phuThu?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
+              </Descriptions.Item>
+            </Descriptions>
+            
+            {chiTietDatPhong.danhSachKhachHang && chiTietDatPhong.danhSachKhachHang.length > 0 && (
+              <>
+            <h4 style={{marginTop: 20, marginBottom: 16}}>Danh sách khách ở</h4>
+            <List
+              bordered
+              dataSource={[
+                { hoTen: chiTietDatPhong.tenKhachHang, isRepresentative: true },
+                ...(chiTietDatPhong.danhSachKhachHang || []).filter(kh => kh.hoTen !== chiTietDatPhong.tenKhachHang)
+              ]}
+              renderItem={item => (
+                <List.Item>
+                      {item.hoTen} {item.isRepresentative && <Tag color="blue">Đại diện</Tag>}
+                </List.Item>
+              )}
+            />
+              </>
+            )}
+
+            {chiTietDatPhong.danhSachDichVu && chiTietDatPhong.danhSachDichVu.length > 0 && (
+              <>
+                <h4 style={{marginTop: 20, marginBottom: 16}}>Dịch vụ đã sử dụng ({chiTietDatPhong.soLuongDichVuSuDung} dịch vụ)</h4>
+                <Table
+                  bordered
+                  size="small"
+                  pagination={false}
+                  dataSource={chiTietDatPhong.danhSachDichVu}
+                  columns={[
+                    {
+                      title: 'Tên dịch vụ',
+                      dataIndex: 'tenDichVu',
+                      key: 'tenDichVu'
+                    },
+                    {
+                      title: 'Số lượng',
+                      dataIndex: 'soLuong',
+                      key: 'soLuong'
+                    },
+                    {
+                      title: 'Thành tiền',
+                      dataIndex: 'thanhTien',
+                      key: 'thanhTien',
+                      render: (value) => value?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'
+                    }
+                  ]}
+                />
+              </>
+            )}
+
+            <div style={{ 
+              marginTop: 20, 
+              padding: '16px', 
+              border: '1px solid #f0f0f0', 
+              borderRadius: '8px', 
+              backgroundColor: '#fafafa' 
+            }}>
+              <div style={{ fontSize: 15 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span>Tiền phòng:</span>
+                  <span>{chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span>Phụ thu:</span>
+                  <span>{chiTietDatPhong.phuThu?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span>Tổng tiền dịch vụ:</span>
+                  <span>
+                    {(chiTietDatPhong.danhSachDichVu?.reduce((sum, item) => sum + (item.thanhTien || 0), 0) || 0)
+                      .toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                  </span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  marginTop: 12, 
+                  paddingTop: 12, 
+                  borderTop: '1px solid #d9d9d9', 
+                  fontWeight: 'bold', 
+                  fontSize: 16 
+                }}>
+                  <span>Tổng cộng:</span>
+                  <span>{(
+                    (chiTietDatPhong.tongTienPhong || 0) + 
+                    (chiTietDatPhong.phuThu || 0) + 
+                    (chiTietDatPhong.danhSachDichVu?.reduce((sum, item) => sum + (item.thanhTien || 0), 0) || 0)
+                  ).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                 </div>
               </div>
             </div>
-          } />
-          <Route path="khachhang" element={<KhachHang />} />
-          <Route path="phong" element={<Phong />} />
-          <Route path="loaiphong" element={<LoaiPhong />} />
-          <Route path="dichvu" element={<DichVu />} />
-          <Route path="hoadon" element={<HoaDon />} />
-          <Route path="datphong" element={<DatPhong />} />
-          <Route path="phuthu" element={<PhuThu />} />
-          <Route path="sudungdichvu" element={<SuDungDichVu />} />
-          <Route path="thongke" element={<ThongKe />} />
-          <Route path="account" element={<Account />} />
-        </Routes>
-      </main>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .dashboard-container { flex-direction: column; }
-          .sidebar { width: 100vw !important; position:relative; }
-          .main-content { padding: 8px; }
-        }
-        @media (max-width: 600px) {
-          .sidebar { font-size: 14px; }
-          .main-content { padding: 2px; }
-          .stats-grid { grid-template-columns: 1fr !important; }
-          .action-buttons { flex-direction: column; gap: 8px; }
-        }
-
-        .dashboard-container {
-          background: var(--background-dark);
-          min-height: 100vh;
-          width: 100%;
-          display: flex;
-        }
-
-        .main-content {
-          flex: 1;
-          background: inherit;
-          min-height: 100vh;
-          overflow-y: auto;
-        }
-
-        [data-theme='dark'] .dashboard-container,
-        [data-theme='dark'] .main-content {
-          background: #1a1a2e;
-        }
-
-        [data-theme='light'] .dashboard-container,
-        [data-theme='light'] .main-content {
-          background: #f0f2f5;
-        }
-      `}</style>
+          </div>
+        )}
+      </Modal>
     </div>
   );
-};
+}
 
-export default Dashboard;
+export default DatPhong;
