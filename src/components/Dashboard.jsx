@@ -28,6 +28,7 @@ const menuItems = [
   { icon: <MdDashboard size={24} />, label: 'Dashboard', path: '/dashboard' },
   { icon: <MdPeople size={24} />, label: 'Khách hàng', path: '/dashboard/khachhang' },
   { icon: <MdMeetingRoom size={24} />, label: 'Phòng', path: '/dashboard/phong' },
+  { icon: <MdHotel size={24} />, label: 'Loại phòng', path: '/dashboard/loaiphong' },
   { icon: <MdRoomService size={24} />, label: 'Dịch vụ', path: '/dashboard/dichvu' },
   { icon: <MdReceipt size={24} />, label: 'Hóa đơn', path: '/dashboard/hoadon' },
   { icon: <MdAssignment size={24} />, label: 'Đặt phòng', path: '/dashboard/datphong' },
@@ -177,7 +178,7 @@ const Dashboard = () => {
       const store = transaction.objectStore("tokens");
       store.delete("auth");
       
-      navigate('/login');
+    navigate('/login');
     };
   };
 
@@ -192,7 +193,7 @@ const Dashboard = () => {
     { icon: <MdAssignment size={32} />, label: 'Tổng đặt phòng', value: loadingStats ? '...' : dashboardStats.totalBookings, type: 'warning' },
     { icon: <BiChart size={32} />, label: 'Doanh thu', value: loadingStats ? '...' : formatCurrency(dashboardStats.totalRevenue), type: 'info' },
   ];
-
+  
   // Lấy tên trang hiện tại từ path
   const currentPage = menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard';
 
@@ -323,6 +324,7 @@ const Dashboard = () => {
           } />
           <Route path="khachhang" element={<KhachHang />} />
           <Route path="phong" element={<Phong />} />
+          <Route path="loaiphong" element={<LoaiPhong />} />
           <Route path="dichvu" element={<DichVu />} />
           <Route path="hoadon" element={<HoaDon />} />
           <Route path="datphong" element={<DatPhong />} />
