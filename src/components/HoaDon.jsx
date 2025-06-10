@@ -976,7 +976,7 @@ function HoaDon() {
               }
               options={khachHangList.map(kh => ({
                 value: kh.hoTen,
-                label: `${kh.hoTen} - ${kh.soCmnd || 'Chưa có CMND'}`,
+                label: kh.hoTen,
               }))}
             />
           </Form.Item>
