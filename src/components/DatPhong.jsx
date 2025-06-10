@@ -18,6 +18,7 @@ function DatPhong() {
   const [loadingKhachHang, setLoadingKhachHang] = useState(false);
   const [form] = Form.useForm();
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedMaKh, setSelectedMaKh] = useState(null);
 
   // Lấy danh sách đặt phòng
   const fetchDatPhongs = async () => {
@@ -436,99 +437,96 @@ function DatPhong() {
           >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <Form.Item label="Mã phòng" name="maPhong" rules={[{ required: true, message: 'Chọn phòng!' }]}>
-                  <Select
-                    placeholder={phongs.length === 0 ? 'Không có phòng' : 'Chọn phòng'}
-                    loading={loadingPhong}
-                    showSearch
-                    optionFilterProp="children"
-                    allowClear
-                  >
-                    {phongs.map((phong) => (
-                      <Select.Option key={phong.maPhong} value={phong.maPhong}>
-                        {phong.tenPhong} ({phong.maPhong})
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+            <Form.Item label="Mã phòng" name="maPhong" rules={[{ required: true, message: 'Chọn phòng!' }]}>
+              <Select
+                placeholder={phongs.length === 0 ? 'Không có phòng' : 'Chọn phòng'}
+                loading={loadingPhong}
+                showSearch
+                optionFilterProp="children"
+                allowClear
+              >
+                {phongs.map((phong) => (
+                  <Select.Option key={phong.maPhong} value={phong.maPhong}>
+                    {phong.tenPhong} ({phong.maPhong})
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-                <Form.Item
-                  label="Khách hàng đại diện"
-                  name="maKh"
-                  rules={[{ required: true, message: 'Chọn khách hàng!' }]}
-                >
-                  <Select
-                    placeholder="Chọn khách hàng"
-                    loading={loadingKhachHang}
-                    showSearch
-                    optionFilterProp="children"
-                    allowClear
-                  >
-                    {khachHangs.map((kh) => (
-                      <Select.Option key={kh.maKh} value={kh.maKh}>
-                        {kh.hoTen}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+            <Form.Item
+              label="Khách hàng đại diện"
+              name="maKh"
+              rules={[{ required: true, message: 'Chọn khách hàng!' }]}
+            >
+              <Select
+                placeholder="Chọn khách hàng"
+                loading={loadingKhachHang}
+                showSearch
+                optionFilterProp="children"
+                allowClear
+                onChange={value => setSelectedMaKh(value)}
+              >
+                {khachHangs.map((kh) => (
+                  <Select.Option key={kh.maKh} value={kh.maKh}>
+                    {kh.hoTen}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-                <Form.Item
-                  label="Ngày nhận phòng"
-                  name="ngayNhanPhong"
-                  rules={[{ required: true, message: 'Chọn ngày nhận!' }]}
-                >
-                  <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm" />
-                </Form.Item>
+            <Form.Item
+              label="Ngày nhận phòng"
+              name="ngayNhanPhong"
+              rules={[{ required: true, message: 'Chọn ngày nhận!' }]}
+            >
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm" />
+            </Form.Item>
               </div>
 
               <div>
-                <Form.Item
-                  label="Số người ở"
-                  name="soNguoiO"
-                  rules={[{ required: true, type: 'number', min: 1, message: 'Nhập số người ở (>=1)!' }]}
-                >
-                  <InputNumber min={1} style={{ width: '100%' }} onChange={() => form.validateFields(['maKhList'])} />
-                </Form.Item>
+            <Form.Item
+              label="Số người ở"
+              name="soNguoiO"
+              rules={[{ required: true, type: 'number', min: 1, message: 'Nhập số người ở (>=1)!' }]}
+            >
+              <InputNumber min={1} style={{ width: '100%' }} onChange={() => form.validateFields(['maKhList'])} />
+            </Form.Item>
 
-                <Form.Item
-                  label="Khách hàng (nhiều)"
-                  name="maKhList"
-                  extra="Chọn thêm khách hàng nếu có. Khách hàng đại diện sẽ tự động được thêm vào danh sách."
-                  rules={[
-                    ({ getFieldValue }) => ({
-                      validator(_, value) {
-                        const soNguoiO = getFieldValue('soNguoiO') || 1;
-                        const maKh = getFieldValue('maKh');
-                        const totalKhachHang = (value || []).length + (maKh ? 1 : 0);
-                        if (soNguoiO >= 2) {
-                          // Nếu số người ở >= 2, yêu cầu phải nhập đủ số khách hàng
-                          if (totalKhachHang !== soNguoiO) {
-                            return Promise.reject(new Error(`Vui lòng chọn đúng ${soNguoiO - 1} khách hàng (không tính khách hàng đại diện)!`));
-                          }
-                        } else if (totalKhachHang > soNguoiO) {
-                          // Nếu số người ở = 1, chỉ kiểm tra không vượt quá
-                          return Promise.reject(new Error(`Số lượng khách hàng không được vượt quá ${soNguoiO} người!`));
-                        }
-                        return Promise.resolve();
-                      },
-                    }),
-                  ]}
-                >
-                  <Select
-                    mode="multiple"
-                    placeholder="Chọn thêm khách hàng (nếu có)"
-                    loading={loadingKhachHang}
-                    optionFilterProp="children"
-                    showSearch
-                    allowClear
-                  >
-                    {khachHangs.map((kh) => (
-                      <Select.Option key={kh.maKh} value={kh.maKh}>
-                        {kh.hoTen}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+            <Form.Item
+              label="Khách hàng (nhiều)"
+              name="maKhList"
+              extra="Chọn thêm khách hàng nếu có. Khách hàng đại diện sẽ tự động được thêm vào danh sách."
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const soNguoiO = getFieldValue('soNguoiO') || 1;
+                    const maKh = getFieldValue('maKh');
+                    const totalKhachHang = (value || []).length + (maKh ? 1 : 0);
+                    if (totalKhachHang > soNguoiO) {
+                      return Promise.reject(new Error(`Số lượng khách hàng không được vượt quá ${soNguoiO} người!`));
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Chọn thêm khách hàng (nếu có)"
+                loading={loadingKhachHang}
+                optionFilterProp="children"
+                showSearch
+                allowClear
+              >
+                {khachHangs
+                  .filter((kh) => kh.maKh !== (selectedMaKh ?? form.getFieldValue('maKh')))
+                  .map((kh) => (
+                    <Select.Option key={kh.maKh} value={kh.maKh}>
+                      {kh.hoTen}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
 
                 <Form.Item
                   label="Ngày trả phòng"
@@ -536,7 +534,7 @@ function DatPhong() {
                   rules={[{ required: true, message: 'Chọn ngày trả!' }]}
                 >
                   <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm" />
-                </Form.Item>
+            </Form.Item>
               </div>
             </div>
 
@@ -549,8 +547,8 @@ function DatPhong() {
                   Hủy
                 </Button>
                 <Button type="primary" htmlType="submit">
-                  {editingDatPhong ? 'Lưu' : 'Thêm đặt phòng'}
-                </Button>
+                {editingDatPhong ? 'Lưu' : 'Thêm đặt phòng'}
+              </Button>
               </Space>
             </Form.Item>
           </Form>
@@ -609,19 +607,19 @@ function DatPhong() {
             
             {chiTietDatPhong.danhSachKhachHang && chiTietDatPhong.danhSachKhachHang.length > 0 && (
               <>
-                <h4 style={{marginTop: 20, marginBottom: 16}}>Danh sách khách ở</h4>
-                <List
-                  bordered
-                  dataSource={[
-                    { hoTen: chiTietDatPhong.tenKhachHang, isRepresentative: true },
-                    ...(chiTietDatPhong.danhSachKhachHang || []).filter(kh => kh.hoTen !== chiTietDatPhong.tenKhachHang)
-                  ]}
-                  renderItem={item => (
-                    <List.Item>
+            <h4 style={{marginTop: 20, marginBottom: 16}}>Danh sách khách ở</h4>
+            <List
+              bordered
+              dataSource={[
+                { hoTen: chiTietDatPhong.tenKhachHang, isRepresentative: true },
+                ...(chiTietDatPhong.danhSachKhachHang || []).filter(kh => kh.hoTen !== chiTietDatPhong.tenKhachHang)
+              ]}
+              renderItem={item => (
+                <List.Item>
                       {item.hoTen} {item.isRepresentative && <Tag color="blue">Đại diện</Tag>}
-                    </List.Item>
-                  )}
-                />
+                </List.Item>
+              )}
+            />
               </>
             )}
 
