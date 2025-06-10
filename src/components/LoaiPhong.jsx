@@ -139,7 +139,6 @@ const LoaiPhong = () => {
       sorter: (a, b) => a.giaCoBan - b.giaCoBan,
     },
     { title: 'Số Người Tối Đa', dataIndex: 'soNguoiToiDa', key: 'soNguoiToiDa', sorter: (a, b) => a.soNguoiToiDa - b.soNguoiToiDa },
-    { title: 'Mô Tả', dataIndex: 'moTa', key: 'moTa', ellipsis: true },
     {
       title: 'Thao Tác',
       key: 'action',
@@ -211,9 +210,6 @@ const LoaiPhong = () => {
             rules={[{ required: true, message: 'Vui lòng nhập số người tối đa!' }]}
           >
             <InputNumber style={{ width: '100%' }} min={1} />
-          </Form.Item>
-          <Form.Item name="moTa" label="Mô Tả">
-            <TextArea rows={4} />
           </Form.Item>
         </Form>
       </Modal>
