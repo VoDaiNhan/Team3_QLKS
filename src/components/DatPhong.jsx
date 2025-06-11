@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import './DatPhong.css';
 import { DownOutlined } from '@ant-design/icons';
 import { jwtDecode } from 'jwt-decode';
+import { Modal as AntdModal } from 'antd';
 
 function DatPhong() {
   const [datPhongs, setDatPhongs] = useState([]);
@@ -20,6 +21,7 @@ function DatPhong() {
   const [form] = Form.useForm();
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedMaKh, setSelectedMaKh] = useState(null);
+  const [bookingErrorModal, setBookingErrorModal] = useState({ visible: false, message: '' });
 
   // Lấy danh sách đặt phòng
   const fetchDatPhongs = async () => {
@@ -220,6 +222,7 @@ function DatPhong() {
 
   // Xử lý thêm/sửa đặt phòng
   const handleOk = async (values) => {
+    const isEdit = !!editingDatPhong;
     try {
       if (!values.maPhong) throw new Error('Vui lòng chọn phòng!');
       if (!values.maKh) throw new Error('Vui lòng chọn khách hàng đại diện!');
@@ -245,7 +248,7 @@ function DatPhong() {
       };
 
       let newMaDatPhong = null;
-      if (editingDatPhong) {
+      if (isEdit) {
         // Lấy maNv từ token
         let maNvFromToken = null;
         try {
@@ -281,7 +284,13 @@ function DatPhong() {
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.message || 'Cập nhật thất bại');
+          setBookingErrorModal({
+            visible: true,
+            message: (err && typeof err.message === 'string' && err.message.trim())
+              ? err.message
+              : 'Không thể cập nhật đặt phòng. Vui lòng kiểm tra lại thông tin!'
+          });
+          return;
         }
         message.success('Cập nhật thành công!');
       } else {
@@ -330,13 +339,13 @@ function DatPhong() {
 
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
-          console.error('API Error details:', {
-            status: res.status,
-            statusText: res.statusText,
-            data: errorData
+          setBookingErrorModal({
+            visible: true,
+            message: (errorData && typeof errorData.message === 'string' && errorData.message.trim())
+              ? errorData.message
+              : 'Không thể thêm đặt phòng. Vui lòng kiểm tra lại thông tin!'
           });
-          message.error(errorData.message || 'Thêm mới thất bại');
-          throw new Error(errorData.message || 'Thêm mới thất bại');
+          return;
         }
 
         const responseData = await res.json();
@@ -357,8 +366,15 @@ function DatPhong() {
 
       await syncData();
     } catch (e) {
-      console.error('Error in handleOk:', e);
-      message.error(e.message || 'Có lỗi xảy ra!');
+      const isEdit = !!editingDatPhong;
+      setBookingErrorModal({
+        visible: true,
+        message: (e && typeof e.message === 'string' && e.message.trim() && !e.message.startsWith('HTTP error!'))
+          ? e.message
+          : (isEdit
+              ? 'Không thể cập nhật đặt phòng. Vui lòng kiểm tra lại thông tin!'
+              : 'Không thể thêm đặt phòng. Vui lòng kiểm tra lại thông tin!')
+      });
     }
   };
 
@@ -587,6 +603,7 @@ function DatPhong() {
                 optionFilterProp="children"
                 showSearch
                 allowClear
+                disabled={form.getFieldValue('soNguoiO') <= 1}
               >
                 {khachHangs
                   .filter((kh) => kh.maKh !== (selectedMaKh ?? form.getFieldValue('maKh')))
@@ -650,25 +667,8 @@ function DatPhong() {
               labelStyle={{ width: '200px', fontWeight: '500' }}
               contentStyle={{ background: '#fff' }}
             >
-              <Descriptions.Item label="Mã đặt phòng">{chiTietDatPhong.maDatPhong}</Descriptions.Item>
-              <Descriptions.Item label="Tên phòng">{chiTietDatPhong.tenPhong || chiTietDatPhong.maPhong}</Descriptions.Item>
-              <Descriptions.Item label="Khách hàng đại diện">{chiTietDatPhong.tenKhachHang}</Descriptions.Item>
-              <Descriptions.Item label="Ngày đặt">{dayjs(chiTietDatPhong.ngayDat).format('DD/MM/YYYY')}</Descriptions.Item>
-              <Descriptions.Item label="Ngày nhận phòng">{dayjs(chiTietDatPhong.ngayNhanPhong).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
-              <Descriptions.Item label="Ngày trả phòng">{dayjs(chiTietDatPhong.ngayTraPhong).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
-              <Descriptions.Item label="Số người ở">{chiTietDatPhong.soNguoiO}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                <Tag color={
-                  chiTietDatPhong.trangThai === 'Đã đặt' ? 'blue' : 
-                  chiTietDatPhong.trangThai === 'Đang sử dụng' ? 'green' :
-                  chiTietDatPhong.trangThai === 'Hoàn thành' ? 'purple' :
-                  chiTietDatPhong.trangThai === 'Hủy' ? 'red' : 'default'
-                }>
-                  {chiTietDatPhong.trangThai}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Tổng tiền phòng">
-                {chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
+              <Descriptions.Item label="Tiền phòng">
+                {((chiTietDatPhong.tongTienPhong || 0) - (chiTietDatPhong.phuThu || 0))?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
               </Descriptions.Item>
               <Descriptions.Item label="Phụ thu">
                 {chiTietDatPhong.phuThu?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
@@ -733,7 +733,7 @@ function DatPhong() {
               <div style={{ fontSize: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span>Tiền phòng:</span>
-                  <span>{chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
+                  <span>{((chiTietDatPhong.tongTienPhong || 0) - (chiTietDatPhong.phuThu || 0))?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span>Phụ thu:</span>
@@ -758,7 +758,6 @@ function DatPhong() {
                   <span>Tổng cộng:</span>
                   <span>{(
                     (chiTietDatPhong.tongTienPhong || 0) + 
-                    (chiTietDatPhong.phuThu || 0) + 
                     (chiTietDatPhong.danhSachDichVu?.reduce((sum, item) => sum + (item.thanhTien || 0), 0) || 0)
                   ).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                 </div>
@@ -767,6 +766,21 @@ function DatPhong() {
           </div>
         )}
       </Modal>
+      <AntdModal
+        open={bookingErrorModal.visible}
+        onCancel={() => setBookingErrorModal({ ...bookingErrorModal, visible: false })}
+        footer={[
+          <Button key="ok" type="primary" onClick={() => setBookingErrorModal({ ...bookingErrorModal, visible: false })}>
+            OK
+          </Button>
+        ]}
+        centered
+        zIndex={2000}
+      >
+        <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: 16, color: '#e53e3e'}}>
+          {bookingErrorModal.message}
+        </div>
+      </AntdModal>
     </div>
   );
 }
