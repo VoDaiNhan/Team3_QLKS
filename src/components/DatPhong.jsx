@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, DatePicker, Space, Popconfirm, message, Select, InputNumber, Spin, Descriptions, List, Tag, Tooltip, Dropdown } from 'antd';
-import { apiFetch } from '../auth';
+import { apiFetch, getToken } from '../auth';
 import dayjs from 'dayjs';
 import './DatPhong.css';
 import { DownOutlined } from '@ant-design/icons';
+import { jwtDecode } from 'jwt-decode';
 
 function DatPhong() {
   const [datPhongs, setDatPhongs] = useState([]);
@@ -219,15 +220,38 @@ function DatPhong() {
 
       let newMaDatPhong = null;
       if (editingDatPhong) {
+        // Lấy maNv từ token
+        let maNvFromToken = 0;
+        try {
+          const tokens = await getToken();
+          if (tokens && tokens.token) {
+            const decoded = jwtDecode(tokens.token);
+            maNvFromToken = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+              ? Number(decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'])
+              : (decoded.MaNv || 0);
+          }
+        } catch (e) {
+          maNvFromToken = 0;
+        }
+        // Tạo payload đúng mẫu yêu cầu
+        const payload = {
+          maNv: maNvFromToken,
+          maKh: updatedValues.maKh ? Number(updatedValues.maKh) : 0,
+          maPhong: updatedValues.maPhong ? String(updatedValues.maPhong) : '',
+          ngayDat: editingDatPhong.ngayDat
+            ? dayjs(editingDatPhong.ngayDat).format('YYYY-MM-DD')
+            : dayjs().format('YYYY-MM-DD'),
+          ngayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
+          ngayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+          soNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 0,
+          trangThai: editingDatPhong.trangThai || 'Đã đặt',
+          maKhList: updatedValues.maKhList.map(Number)
+        };
+
         const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${editingDatPhong.maDatPhong}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...updatedValues,
-            maKhList: updatedValues.maKhList,
-            ngayNhanPhong: dayjs(updatedValues.ngayNhanPhong).format('YYYY-MM-DD HH:mm'),
-            ngayTraPhong: dayjs(updatedValues.ngayTraPhong).format('YYYY-MM-DD HH:mm'),
-          }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -266,17 +290,14 @@ function DatPhong() {
         });
 
         if (!res.ok) {
-          const errorData = await res.json();
+          const errorData = await res.json().catch(() => ({}));
           console.error('API Error details:', {
             status: res.status,
             statusText: res.statusText,
             data: errorData
           });
-          throw new Error(
-            errorData.errors ? 
-              Object.values(errorData.errors).flat().join(', ') : 
-              errorData.message || errorData.title || 'Thêm mới thất bại'
-          );
+          message.error(errorData.message || 'Thêm mới thất bại');
+          throw new Error(errorData.message || 'Thêm mới thất bại');
         }
 
         const responseData = await res.json();
