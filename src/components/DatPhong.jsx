@@ -668,7 +668,7 @@ function DatPhong() {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Tổng tiền phòng">
-                {chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
+                {(chiTietDatPhong.tongTienPhong - (chiTietDatPhong.phuThu || 0))?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
               </Descriptions.Item>
               <Descriptions.Item label="Phụ thu">
                 {chiTietDatPhong.phuThu?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}
@@ -733,7 +733,7 @@ function DatPhong() {
               <div style={{ fontSize: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span>Tiền phòng:</span>
-                  <span>{chiTietDatPhong.tongTienPhong?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
+                  <span>{(chiTietDatPhong.tongTienPhong - (chiTietDatPhong.phuThu || 0))?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) || '0 VND'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span>Phụ thu:</span>
@@ -757,7 +757,7 @@ function DatPhong() {
                 }}>
                   <span>Tổng cộng:</span>
                   <span>{(
-                    (chiTietDatPhong.tongTienPhong || 0) + 
+                    (chiTietDatPhong.tongTienPhong - (chiTietDatPhong.phuThu || 0)) + 
                     (chiTietDatPhong.phuThu || 0) + 
                     (chiTietDatPhong.danhSachDichVu?.reduce((sum, item) => sum + (item.thanhTien || 0), 0) || 0)
                   ).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
