@@ -156,22 +156,48 @@ function DatPhong() {
 
   // Hiển thị modal thêm/sửa
   const showModal = async (record = null) => {
-    setEditingDatPhong(record);
-    setIsModalVisible(true);
-    setTimeout(() => {
-      if (record) {
-        form.setFieldsValue({
-          ...record,
-          ngayNhanPhong: record.ngayNhanPhong ? dayjs(record.ngayNhanPhong) : null,
-          ngayTraPhong: record.ngayTraPhong ? dayjs(record.ngayTraPhong) : null,
-          maKhList: record.danhSachKhachHang ? record.danhSachKhachHang.map(kh => kh.maKh) : [],
-          soNguoiO: record.soNguoiO || 1,
-        });
-      } else {
+    if (record && record.maDatPhong) {
+      setLoading(true);
+      try {
+        const res = await apiFetch(`https://qlks-0dvh.onrender.com/api/DatPhong/${record.maDatPhong}`);
+        const data = await res.json();
+        const detail = data.data || data;
+        setEditingDatPhong(detail);
+        setIsModalVisible(true);
+        setTimeout(() => {
+          // Tìm mã khách hàng của những khách hàng phụ (không phải khách đại diện)
+          const additionalCustomers = detail.danhSachKhachHang
+            ? detail.danhSachKhachHang
+                .filter(kh => kh.hoTen !== detail.tenKhachHang)
+                .map(kh => {
+                  // Tìm maKh từ danh sách khachHangs dựa trên hoTen
+                  const customer = khachHangs.find(k => k.hoTen === kh.hoTen);
+                  return customer ? customer.maKh : null;
+                })
+                .filter(maKh => maKh !== null) // Loại bỏ những trường hợp không tìm thấy maKh
+            : [];
+
+          form.setFieldsValue({
+            ...detail,
+            ngayNhanPhong: detail.ngayNhanPhong ? dayjs(detail.ngayNhanPhong) : null,
+            ngayTraPhong: detail.ngayTraPhong ? dayjs(detail.ngayTraPhong) : null,
+            maKhList: additionalCustomers,
+            soNguoiO: detail.soNguoiO || 1,
+          });
+        }, 0);
+      } catch (e) {
+        message.error('Không thể tải chi tiết đặt phòng!');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setEditingDatPhong(null);
+      setIsModalVisible(true);
+      setTimeout(() => {
         form.resetFields();
         form.setFieldsValue({ soNguoiO: 1 });
-      }
-    }, 0);
+      }, 0);
+    }
   };
 
   const showDetailModal = async (maDatPhong) => {
@@ -221,17 +247,17 @@ function DatPhong() {
       let newMaDatPhong = null;
       if (editingDatPhong) {
         // Lấy maNv từ token
-        let maNvFromToken = 0;
+        let maNvFromToken = null;
         try {
           const tokens = await getToken();
           if (tokens && tokens.token) {
             const decoded = jwtDecode(tokens.token);
             maNvFromToken = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
               ? Number(decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'])
-              : (decoded.MaNv || 0);
+              : (decoded.MaNv ? Number(decoded.MaNv) : null);
           }
         } catch (e) {
-          maNvFromToken = 0;
+          maNvFromToken = null;
         }
         // Tạo payload đúng mẫu yêu cầu
         const payload = {
@@ -241,8 +267,8 @@ function DatPhong() {
           ngayDat: editingDatPhong.ngayDat
             ? dayjs(editingDatPhong.ngayDat).format('YYYY-MM-DD')
             : dayjs().format('YYYY-MM-DD'),
-          ngayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
-          ngayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+          ngayNhanPhong: dayjs(updatedValues.ngayNhanPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
+          ngayTraPhong: dayjs(updatedValues.ngayTraPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
           soNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 0,
           trangThai: editingDatPhong.trangThai || 'Đã đặt',
           maKhList: updatedValues.maKhList.map(Number)
@@ -259,14 +285,27 @@ function DatPhong() {
         }
         message.success('Cập nhật thành công!');
       } else {
+        // Lấy maNv từ token cho thêm mới (nếu cần)
+        let maNvFromToken = null;
+        try {
+          const tokens = await getToken();
+          if (tokens && tokens.token) {
+            const decoded = jwtDecode(tokens.token);
+            maNvFromToken = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+              ? Number(decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'])
+              : (decoded.MaNv ? Number(decoded.MaNv) : null);
+          }
+        } catch (e) {
+          maNvFromToken = null;
+        }
         const payload = {
           datPhong: {
-            MaNv: null,
+            MaNv: maNvFromToken,
             MaKh: updatedValues.maKh ? Number(updatedValues.maKh) : null,
             MaPhong: updatedValues.maPhong ? String(updatedValues.maPhong) : null,
             NgayDat: dayjs().format('YYYY-MM-DD'),
-            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
-            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
+            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
             SoNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 1,
             TrangThai: updatedValues.trangThai || 'Đã đặt'
           },
@@ -274,8 +313,8 @@ function DatPhong() {
           DatPhongVMs: [{
             MaKh: updatedValues.maKh ? Number(updatedValues.maKh) : null,
             MaPhong: updatedValues.maPhong ? String(updatedValues.maPhong) : null,
-            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).toISOString(),
-            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).toISOString(),
+            NgayNhanPhong: dayjs(updatedValues.ngayNhanPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
+            NgayTraPhong: dayjs(updatedValues.ngayTraPhong).format('YYYY-MM-DDTHH:mm:ss') + '.000Z',
             SoNguoiO: updatedValues.soNguoiO ? Number(updatedValues.soNguoiO) : 1,
             TrangThai: updatedValues.trangThai || 'Đã đặt'
           }]
@@ -363,8 +402,18 @@ function DatPhong() {
       },
     },
     { title: 'Phòng', dataIndex: 'maPhong', key: 'maPhong' },
-    { title: 'Ngày nhận', dataIndex: 'ngayNhanPhong', key: 'ngayNhanPhong' },
-    { title: 'Ngày trả', dataIndex: 'ngayTraPhong', key: 'ngayTraPhong' },
+    {
+      title: 'Ngày nhận',
+      dataIndex: 'ngayNhanPhong',
+      key: 'ngayNhanPhong',
+      render: (value) => value ? dayjs(value).format('DD/MM/YYYY HH:mm') : ''
+    },
+    {
+      title: 'Ngày trả',
+      dataIndex: 'ngayTraPhong',
+      key: 'ngayTraPhong',
+      render: (value) => value ? dayjs(value).format('DD/MM/YYYY HH:mm') : ''
+    },
     {
       title: 'Trạng thái',
       dataIndex: 'trangThai',
