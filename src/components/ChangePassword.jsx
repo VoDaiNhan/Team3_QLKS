@@ -3,7 +3,7 @@ import { Form, Input, Button, Card, message, Typography } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import { apiFetch } from '../auth';
 import { useTheme } from '../contexts/ThemeContext';
-import '../styles/ChangePassword.css';
+import './ChangePassword.css';
 
 const { Title } = Typography;
 
